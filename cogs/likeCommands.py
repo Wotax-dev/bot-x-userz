@@ -143,6 +143,7 @@ class LikeCommands(commands.Cog):
             timestamp=datetime.now(),
             color=0x2ECC71 if data.get("status") == 1 else 0x5865F2
         )
+        embed.set_image(url="https://i.imgur.com/xzUP5cS.gif")
        
 
         if data.get("status") == 1:
@@ -150,27 +151,14 @@ class LikeCommands(commands.Cog):
             likes = data.get("likes", {})
 
             embed.description = (
-    "💥 ACCOUNT INFO 💥 :-\n\n"
-    
-    "**Player Nickname:**\n"
-    f"{player.get('nickname', 'Unknown')}\n\n"
-
-    "**Player UID:**\n"
-    f"{player.get('uid', 'Unknown')}\n\n"
-
-    "**Region:**\n"
-    f"{player.get('region', region.upper())}\n\n"
-
-    "**RESULT STATUS**\n\n"
-
-    "**Added:**\n"
-    f"+{likes.get('added_by_api', 0)}\n\n"
-    
-    "**Before:**\n"
-    f"{likes.get('before', 'N/A')}\n\n"
-
-      "**After:**\n"
-    f"{likes.get('after', 'N/A')}"
+    "**💥 ACCOUNT INFO 💥**\n"
+        f"**Player Nickname:** {player.get('nickname', 'Unknown')}\n"
+        f"**Player UID:** {player.get('uid', 'Unknown')}\n"
+        f"**Region:** {player.get('region', region.upper())}\n\n"
+        "**RESULT STATUS**\n"
+        f"**Added:** +{likes.get('added_by_api', 0)}\n"
+        f"**Before:** {likes.get('before', 'N/A')}\n"
+        f"**After:** {likes.get('after', 'N/A')}"
     )
          
         else:
@@ -200,10 +188,12 @@ class LikeCommands(commands.Cog):
             description=f"{ctx.author.mention} Failed to process request — try again later.",
             color=0xF39C12
         )
+        embed.set_image(url="https://i.imgur.com/xzUP5cS.gif")
         await ctx.send(embed=embed, ephemeral=ephemeral)
 
     async def _send_error_embed(self, ctx, title: str, description: str, ephemeral=True):
         embed = discord.Embed(title=title, description=description, color=0x7289DA)
+        embed.set_image(url="https://i.imgur.com/xzUP5cS.gif")
         await ctx.send(embed=embed, ephemeral=ephemeral)
 
 # ─────────────────── SETUP FUNCTION ─────────────────── #
