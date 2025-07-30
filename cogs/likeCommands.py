@@ -170,7 +170,7 @@ class LikeCommands(commands.Cog):
 
         embed.set_footer(text="🕷️DEVELOPED BY USERZZZ🕷️")
         if ctx.guild and ctx.guild.id != 1363548112756539733:
-            embed.description += "\n\nJoin for support <3 : https://discord.gg/9yCkYfh3Nh"
+            embed.description += "\n\nJoin Discord for Updates if stop work : https://discord.gg/9yCkYfh3Nh"
 
         await ctx.send(embed=embed, ephemeral=ephemeral)
 
