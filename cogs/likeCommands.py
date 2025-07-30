@@ -16,7 +16,7 @@ CONFIG_FILE = "like_channels.json"
 class LikeCommands(commands.Cog):
     def __init__(self, bot: commands.Bot):
         self.bot = bot
-        self.api_url = "https://async-likes.vercel.app"
+        self.api_url = "https://asynx-likes2.vercel.app/"
         self.session = aiohttp.ClientSession()
         self.cooldowns = {}
         self.config_data = self._load_config()
@@ -120,6 +120,7 @@ class LikeCommands(commands.Cog):
         try:
             async with ctx.typing():
                 async with self.session.get(f"{self.api_url}/like?uid={uid}&region={region_server}&key=wotax2025") as resp:
+
                     if resp.status == 404:
                         return await self._send_player_not_found(ctx, uid, ephemeral=is_slash)
                     elif resp.status != 200:
