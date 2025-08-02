@@ -72,7 +72,7 @@ class Seemu(commands.Bot):
             return
 
         server_count = len(self.guilds) #
-        activity = discord.Game(name="!info")
+        activity = discord.Game(name="Made by Wotax")
         await self.change_presence(activity=activity)
         bot_name = f"{self.user}"
         print(f"\n🔗 Connected as {bot_name}")
@@ -84,7 +84,7 @@ class Seemu(commands.Bot):
 
         try:
             server_count = len(self.guilds) #
-            activity = discord.Game(name="!info")
+            activity = discord.Game(name="Made by Wotax")
             await self.change_presence(activity=activity)
             print(f"Activité mise à jour : Partage de likes sur {server_count} serveurs")
 
