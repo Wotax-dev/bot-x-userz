@@ -98,8 +98,11 @@ class LikeCommands(commands.Cog):
         try:
             async with ctx.typing():
                 async with self.session.get(url) as resp:
-                    if resp.status == 404 or resp.status != 200:
+                    if resp.status == 404:
                         return await self._send_player_not_found(ctx, uid, ephemeral=is_slash)
+
+                    if resp.status != 200:
+                        return await self._send_error_embed(ctx, "Error", f"Unexpected server response: {resp.status}", ephemeral=is_slash)
 
                     data = await resp.json()
                     await self._build_response_embed(ctx, data, region, uid, is_slash)
@@ -112,11 +115,9 @@ class LikeCommands(commands.Cog):
 
     async def _build_response_embed(self, ctx: commands.Context, data: dict, region: str, uid: str, ephemeral: bool):
         embed = discord.Embed(
-            title="🔰 REBEL  LIKE  ADDED 🔰",
             timestamp=datetime.utcnow(),
             color=0x00FFFF if data.get("status") == 1 else 0xFF5555
         )
-
         embed.set_thumbnail(url=ctx.author.display_avatar.url)
         embed.set_image(url="https://i.imgur.com/K4paoIa.gif")
         embed.set_footer(text="👨‍💻 Developed by Mikey FF Bot Developer Team")
@@ -129,6 +130,7 @@ class LikeCommands(commands.Cog):
             likes_after = response.get("LikesafterCommand", "N/A")
             likes_added = response.get("LikesGivenByAPI", "N/A")
 
+            embed.title = "🔰 REBEL  LIKE  ADDED 🔰"
             embed.description = (
                 "✨ **PLAYER INFO** ✨\n"
                 f"👤 Nickname       : `{nickname}`\n"
@@ -142,11 +144,10 @@ class LikeCommands(commands.Cog):
                 "💬 Need Help? Join our Discord: https://discord.gg/9yCkYfh3Nh"
             )
         else:
-            response = data.get("response", {})
-            level = response.get("PlayerLevel", "N/A")
+            embed.title = "⚠️ Max Likes Sent Already"
             embed.description = (
-                "❌ You already claimed likes for today. Try again tomorrow.\n\n"
-                f"🏅 Player Level : `{level}`\n"
+                "❌ You’ve already sent the max likes for this player today.\n"
+                "Please try again tomorrow.\n\n"
                 "💬 Need Help? Join our Discord: https://discord.gg/9yCkYfh3Nh"
             )
 
