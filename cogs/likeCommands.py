@@ -42,7 +42,7 @@ class LikeCommands(commands.Cog):
 
     async def check_channel(self, ctx: commands.Context) -> bool:
         if ctx.guild is None:
-            return False
+            return False  # block in DMs
 
         allowed_channels = self.config_data["servers"].get(str(ctx.guild.id), {}).get("like_channels", [])
         return str(ctx.channel.id) in allowed_channels
@@ -131,6 +131,8 @@ class LikeCommands(commands.Cog):
             likes_added = response.get("LikesGivenByAPI", "N/A")
             key_remaining = response.get("KeyRemainingRequests", "N/A")
             key_expiry_raw = response.get("KeyExpiresAt", "")
+
+            # Format expiry into readable format
             try:
                 key_expiry_dt = datetime.fromisoformat(key_expiry_raw)
                 key_expiry = key_expiry_dt.strftime("%d %B %Y, %I:%M %p")
@@ -188,4 +190,4 @@ class LikeCommands(commands.Cog):
         await ctx.send(embed=embed, ephemeral=ephemeral)
 
 async def setup(bot: commands.Bot):
-    await bot.add_cog(LikeCommands(bot))
+    await bot.add_cog(LikeCommands(bot)
