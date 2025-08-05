@@ -123,9 +123,10 @@ class LikeCommands(commands.Cog):
                 f"📉 Likes Before   : `{res.get('LikesbeforeCommand', 'N/A')}`\n"
                 f"✅ Likes Added    : `{res.get('LikesGivenByAPI', 'N/A')}`\n"
                 f"📈 Likes After    : `{res.get('LikesafterCommand', 'N/A')}`\n\n"
-                "🔐 **API INFO** 🔐\n"
+                " **API INFO** \n"
                 f"🧾 Remaining Quota : `{res.get('KeyRemainingRequests', 'N/A')}`\n"
-                f"🕒 Key Expires At  : `{self._format_time(res.get('KeyExpiresAt'))}`\n\n"
+                f"🕒 Key Expires At  : `{self._format_time(res.get('KeyExpiresAt'))}`\n\n\n"
+                
                 "💬 Need Help? Join our Discord: https://discord.gg/9yCkYfh3Nh"
             )
         else:
@@ -163,3 +164,4 @@ class LikeCommands(commands.Cog):
 
 async def setup(bot: commands.Bot):
     await bot.add_cog(LikeCommands(bot))
+
