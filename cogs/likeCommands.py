@@ -42,7 +42,7 @@ class LikeCommands(commands.Cog):
 
     async def check_channel(self, ctx: commands.Context) -> bool:
         if ctx.guild is None:
-            return False  # block in DMs
+            return False
 
         allowed_channels = self.config_data["servers"].get(str(ctx.guild.id), {}).get("like_channels", [])
         return str(ctx.channel.id) in allowed_channels
@@ -129,6 +129,13 @@ class LikeCommands(commands.Cog):
             likes_before = response.get("LikesbeforeCommand", "N/A")
             likes_after = response.get("LikesafterCommand", "N/A")
             likes_added = response.get("LikesGivenByAPI", "N/A")
+            key_remaining = response.get("KeyRemainingRequests", "N/A")
+            key_expiry_raw = response.get("KeyExpiresAt", "")
+            try:
+                key_expiry_dt = datetime.fromisoformat(key_expiry_raw)
+                key_expiry = key_expiry_dt.strftime("%d %B %Y, %I:%M %p")
+            except Exception:
+                key_expiry = key_expiry_raw or "N/A"
 
             embed.title = "🔰 REBEL  LIKE  ADDED 🔰"
             embed.description = (
@@ -141,6 +148,9 @@ class LikeCommands(commands.Cog):
                 f"📉 Likes Before   : `{likes_before}`\n"
                 f"✅ Likes Added    : `{likes_added}`\n"
                 f"📈 Likes After    : `{likes_after}`\n\n"
+                "🔐 **API INFO** 🔐\n"
+                f"🧾 Remaining Quota : `{key_remaining}`\n"
+                f"🕒 Key Expires At  : `{key_expiry}`\n\n"
                 "💬 Need Help? Join our Discord: https://discord.gg/9yCkYfh3Nh"
             )
         else:
