@@ -6,9 +6,6 @@ from datetime import datetime
 import json
 import os
 import asyncio
-from dotenv import load_dotenv
-
-load_dotenv()
 
 CONFIG_FILE = "like_channels.json"
 
@@ -20,7 +17,7 @@ class LikeCommands(commands.Cog):
         self.session = aiohttp.ClientSession()
         self.config_data = self._load_config()
 
-    def _load_config(self) -> dict:
+    def _load_config(self):
         if os.path.exists(CONFIG_FILE):
             try:
                 with open(CONFIG_FILE, "r") as f:
@@ -28,24 +25,22 @@ class LikeCommands(commands.Cog):
                     data.setdefault("servers", {})
                     return data
             except json.JSONDecodeError:
-                print(f"[WARN] Corrupt config file '{CONFIG_FILE}', resetting.")
+                print("[WARN] Config file corrupt. Resetting.")
         default = {"servers": {}}
         self._save_config(default)
         return default
 
-    def _save_config(self, config: dict = None):
+    def _save_config(self, config=None):
         config = config or self.config_data
-        temp_file = CONFIG_FILE + ".tmp"
-        with open(temp_file, "w") as f:
+        with open(CONFIG_FILE + ".tmp", "w") as f:
             json.dump(config, f, indent=4)
-        os.replace(temp_file, CONFIG_FILE)
+        os.replace(CONFIG_FILE + ".tmp", CONFIG_FILE)
 
-    async def check_channel(self, ctx: commands.Context) -> bool:
+    async def check_channel(self, ctx: commands.Context):
         if ctx.guild is None:
-            return False  # block in DMs
-
-        allowed_channels = self.config_data["servers"].get(str(ctx.guild.id), {}).get("like_channels", [])
-        return str(ctx.channel.id) in allowed_channels
+            return False
+        allowed = self.config_data["servers"].get(str(ctx.guild.id), {}).get("like_channels", [])
+        return str(ctx.channel.id) in allowed
 
     async def cog_unload(self):
         await self.session.close()
@@ -53,12 +48,9 @@ class LikeCommands(commands.Cog):
     @commands.hybrid_command(name="setlikechannel", description="Allow/block the use of /like in a specific channel.")
     @commands.has_permissions(administrator=True)
     @app_commands.describe(channel="Channel to toggle access for /like command.")
-    async def set_like_channel(self, ctx: commands.Context, channel: discord.TextChannel):
+    async def set_like_channel(self, ctx, channel: discord.TextChannel):
         if not ctx.guild:
             return await ctx.send("This command must be used in a server.", ephemeral=True)
-
-        if ctx.author != ctx.guild.owner and not ctx.author.guild_permissions.administrator:
-            return await ctx.send("❌ Only the server owner or admins can configure this.", ephemeral=True)
 
         guild_id = str(ctx.guild.id)
         server_cfg = self.config_data["servers"].setdefault(guild_id, {})
@@ -76,119 +68,98 @@ class LikeCommands(commands.Cog):
         await ctx.send(message, ephemeral=True)
 
     @commands.hybrid_command(name="like", description="Send likes to a Free Fire player.")
-    @app_commands.describe(
-        uid="Player UID (numbers only, at least 6 digits)",
-        region="Region (e.g., bd, eu, br, us)"
-    )
-    async def like_command(self, ctx: commands.Context, region: str = None, uid: str = None):
+    @app_commands.describe(uid="Player UID", region="Region (e.g., bd, eu, us, br)")
+    async def like_command(self, ctx, region: str = None, uid: str = None):
         is_slash = ctx.interaction is not None
 
         if not await self.check_channel(ctx):
-            return await ctx.send("❌ You can only use this command in a specific allowed channel.", ephemeral=is_slash)
+            return await ctx.send("❌ This channel is not allowed for `/like`.", ephemeral=is_slash)
 
         if uid is None and region and region.isdigit():
             uid, region = region, None
 
-        if not region or not uid:
-            return await ctx.send("❌ Please specify the region and UID.\nExample: `/like bd 2792480170`", ephemeral=is_slash)
+        if not uid or not region:
+            return await ctx.send("❌ Please provide both region and UID. Example: `/like bd 1234567890`", ephemeral=is_slash)
 
-        region = region.lower()
-        url = f"{self.api_base}/{region}/{uid}?key={self.api_key}"
+        url = f"{self.api_base}/{region.lower()}/{uid}?key={self.api_key}"
 
         try:
             async with ctx.typing():
                 async with self.session.get(url) as resp:
                     if resp.status == 404:
-                        return await self._send_player_not_found(ctx, uid, ephemeral=is_slash)
-
+                        return await self._player_not_found(ctx, uid, is_slash)
                     if resp.status != 200:
-                        return await self._send_error_embed(ctx, "Error", f"Unexpected server response: {resp.status}", ephemeral=is_slash)
+                        return await self._error(ctx, "Error", f"Server returned: {resp.status}", is_slash)
 
                     data = await resp.json()
-                    await self._build_response_embed(ctx, data, region, uid, is_slash)
+                    await self._send_result(ctx, data, uid, region, is_slash)
 
         except asyncio.TimeoutError:
-            await self._send_error_embed(ctx, "Timeout", "The server did not respond in time.", ephemeral=is_slash)
+            await self._error(ctx, "Timeout", "The server took too long to respond.", is_slash)
         except Exception as e:
-            print(f"[CRITICAL] Unexpected error: {e}")
-            await self._send_error_embed(ctx, "Error", "An unexpected error occurred.", ephemeral=is_slash)
+            print("Unexpected error:", e)
+            await self._error(ctx, "Unexpected Error", str(e), is_slash)
 
-    async def _build_response_embed(self, ctx: commands.Context, data: dict, region: str, uid: str, ephemeral: bool):
+    async def _send_result(self, ctx, data, uid, region, ephemeral):
         embed = discord.Embed(
             timestamp=datetime.utcnow(),
-            color=0x00FFFF if data.get("status") == 1 else 0xFF5555
+            color=0x00FFFF if data.get("status") == 1 else 0xFF0000
         )
         embed.set_thumbnail(url=ctx.author.display_avatar.url)
         embed.set_image(url="https://i.imgur.com/K4paoIa.gif")
         embed.set_footer(text="👨‍💻 Developed by Mikey FF Bot Developer Team")
 
         if data.get("status") == 1:
-            response = data.get("response", {})
-            nickname = response.get("PlayerNickname", "Unknown").replace("\u3164", " ")
-            level = response.get("PlayerLevel", "N/A")
-            likes_before = response.get("LikesbeforeCommand", "N/A")
-            likes_after = response.get("LikesafterCommand", "N/A")
-            likes_added = response.get("LikesGivenByAPI", "N/A")
-            key_remaining = response.get("KeyRemainingRequests", "N/A")
-            key_expiry_raw = response.get("KeyExpiresAt", "")
-
-            # Format expiry into readable format
-            try:
-                key_expiry_dt = datetime.fromisoformat(key_expiry_raw)
-                key_expiry = key_expiry_dt.strftime("%d %B %Y, %I:%M %p")
-            except Exception:
-                key_expiry = key_expiry_raw or "N/A"
-
+            res = data["response"]
+            nickname = res.get("PlayerNickname", "Unknown").replace("\u3164", " ")
             embed.title = "🔰 REBEL  LIKE  ADDED 🔰"
             embed.description = (
                 "✨ **PLAYER INFO** ✨\n"
                 f"👤 Nickname       : `{nickname}`\n"
                 f"🆔 UID            : `{uid}`\n"
                 f"🌍 Region         : `{region.upper()}`\n"
-                f"🏅 Player Level   : `{level}`\n\n"
+                f"🏅 Player Level   : `{res.get('PlayerLevel', 'N/A')}`\n\n"
                 "🔥 **LIKE STATUS** 🔥\n"
-                f"📉 Likes Before   : `{likes_before}`\n"
-                f"✅ Likes Added    : `{likes_added}`\n"
-                f"📈 Likes After    : `{likes_after}`\n\n"
+                f"📉 Likes Before   : `{res.get('LikesbeforeCommand', 'N/A')}`\n"
+                f"✅ Likes Added    : `{res.get('LikesGivenByAPI', 'N/A')}`\n"
+                f"📈 Likes After    : `{res.get('LikesafterCommand', 'N/A')}`\n\n"
                 "🔐 **API INFO** 🔐\n"
-                f"🧾 Remaining Quota : `{key_remaining}`\n"
-                f"🕒 Key Expires At  : `{key_expiry}`\n\n"
+                f"🧾 Remaining Quota : `{res.get('KeyRemainingRequests', 'N/A')}`\n"
+                f"🕒 Key Expires At  : `{self._format_time(res.get('KeyExpiresAt'))}`\n\n"
                 "💬 Need Help? Join our Discord: https://discord.gg/9yCkYfh3Nh"
             )
         else:
             embed.title = "⚠️ Max Likes Sent Already"
             embed.description = (
-                "❌ You’ve already sent the max likes for this player today.\n"
-                "Please try again tomorrow.\n\n"
+                "❌ You've already sent max likes today to this player.\n"
+                "Try again tomorrow.\n\n"
                 "💬 Need Help? Join our Discord: https://discord.gg/9yCkYfh3Nh"
             )
 
         await ctx.send(embed=embed, ephemeral=ephemeral)
 
-    async def _send_player_not_found(self, ctx, uid, ephemeral=True):
+    async def _player_not_found(self, ctx, uid, ephemeral):
         embed = discord.Embed(
             title="Player Not Found ❌",
-            description=f"UID `{uid}` not found or inaccessible.\n\n"
-                        "• Make sure the UID is correct.\n"
-                        "• Try again with a different region.",
+            description=f"UID `{uid}` not found or not accessible.\nMake sure it's correct.",
             color=0xE74C3C
         )
         embed.set_thumbnail(url=ctx.author.display_avatar.url)
         embed.set_image(url="https://i.imgur.com/K4paoIa.gif")
-        embed.add_field(name="Need Help?", value="https://discord.gg/9yCkYfh3Nh", inline=False)
         await ctx.send(embed=embed, ephemeral=ephemeral)
 
-    async def _send_error_embed(self, ctx, title: str, description: str, ephemeral=True):
-        embed = discord.Embed(
-            title=title,
-            description=description,
-            color=0x7289DA
-        )
+    async def _error(self, ctx, title, desc, ephemeral):
+        embed = discord.Embed(title=title, description=desc, color=0x7289DA)
         embed.set_thumbnail(url=ctx.author.display_avatar.url)
         embed.set_image(url="https://i.imgur.com/K4paoIa.gif")
-        embed.add_field(name="Need Help?", value="https://discord.gg/9yCkYfh3Nh", inline=False)
         await ctx.send(embed=embed, ephemeral=ephemeral)
+
+    def _format_time(self, iso_str):
+        try:
+            dt = datetime.fromisoformat(iso_str)
+            return dt.strftime("%d %B %Y, %I:%M %p")
+        except:
+            return iso_str or "N/A"
 
 async def setup(bot: commands.Bot):
     await bot.add_cog(LikeCommands(bot))
-
