@@ -190,4 +190,5 @@ class LikeCommands(commands.Cog):
         await ctx.send(embed=embed, ephemeral=ephemeral)
 
 async def setup(bot: commands.Bot):
-    await bot.add_cog(LikeCommands(bot)
+    await bot.add_cog(LikeCommands(bot))
+
